@@ -6,7 +6,7 @@ default rel
 
 section .rodata
 
-var(static, float_t, uint32_max_over_one, 796917760)
+var(static, float_t, one_over_uint32_max, 796917760)
 
 section .text
 
@@ -31,9 +31,9 @@ func(global, rand_col)
 func(global, randf)
 	rand32_base
 
-	; ret float_t(rax) * float_t[uint32_max_over_one] * (xmm1 - xmm0) + xmm0
+	; return ((float)(rand()) / RAND_MAX) * (max - min) + min
 	cvtsi2ss xmm2, rax
-	mulss    xmm2, float_p [uint32_max_over_one]
+	mulss    xmm2, float_p [one_over_uint32_max]
 	subss    xmm1, xmm0
 	mulss    xmm1, xmm2
 	addss    xmm0, xmm1
