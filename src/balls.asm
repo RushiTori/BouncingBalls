@@ -7,14 +7,17 @@ default rel
 section .rodata
 
 var(static, float_t, percent_50_f, 0.50)
+var(static, float_t, one_f, 1.0)
 
+var(static, uint64_t, neg_flag128, 0x8000_0000_8000_0000)
+var(static, uint32_t, neg_flag64, 0x80_00_00_00)
 var(static, uint32_t, neg_flag32, 0x80_00_00_00)
 
 var(static, float_t, min_ball_speed, -240.0)
 var(static, float_t, max_ball_speed, 240.0)
 
 var(static, float_t, min_ball_radius, 4.0)
-var(static, float_t, max_ball_radius, 8.0)
+var(static, float_t, max_ball_radius, 12.0)
 
 string(static, ball_texture_ext, ".png", 0)
 
@@ -267,76 +270,142 @@ func(static, handle_collisions)
 		jz  .skip_inner_loop
 		lea rsi, [rdi + sizeof(Ball)]
 		.inner_loop:
-			movd  xmm0, float_p [rdi + Ball.mass]
-			addss xmm0, float_p [rsi + Ball.mass]
-			mulss xmm0, xmm0
 
-			movq   xmm1, vector2_p [rdi + Ball.pos]
-			movq   xmm2, vector2_p [rsi + Ball.pos]
-			vsubps  xmm1, xmm2, xmm1
-			mulps  xmm1, xmm1
-			shufps xmm2, xmm1, 1
-			addss  xmm1, xmm2
+			movd  xmm0, float_p [rdi + Ball.mass] ; m1
+			addss xmm0, float_p [rsi + Ball.mass] ; m12
+			mulss xmm0, xmm0                      ; m12^2
+
+			movq  xmm1, vector2_p [rdi + Ball.pos] ; p1
+			movq  xmm2, vector2_p [rsi + Ball.pos] ; p2
+			subps xmm1, xmm2                       ; p1_p2
+			mulps xmm1, xmm1                       ; p1_p2^2
+			vshufps xmm2, xmm1, xmm1, 85           ; p1_p2y^2
+			addss xmm1, xmm2                       ; dist2
+
 			comiss xmm1, xmm0
 			jae    .skip_elastic_collision
+				; Fixing the balls' positions
+				sqrtss xmm0, xmm0                   ; m12
+				sqrtss xmm1, xmm1                   ; dist
+				subss  xmm0, xmm1                   ; excess
+				movd   xmm2, float_p [percent_50_f] ; 1.0 / 2.0
+				mulss  xmm0, xmm2                   ; excess / 2
+				
+				movd  xmm2, float_p [one_f]
+				divss xmm2, xmm1            ; one_over_dist
+				mulss xmm0, xmm2            ; one_over_dist * (excess/2)
+				shufps xmm0, xmm0, 0
+
+
+				movq  xmm1, vector2_p [rdi + Ball.pos] ; p1
+				movq  xmm2, vector2_p [rsi + Ball.pos] ; p2
+				subps xmm2, xmm1                       ; p2_p1
+				mulps xmm2, xmm0                       ; p2_p1.setMag(excess / 2)
+
+				movq  xmm0,                       vector2_p [rdi + Ball.pos] ; p1
+				movq  xmm1,                       vector2_p [rsi + Ball.pos] ; p2
+				subps xmm0,                       xmm2
+				addps xmm1,                       xmm2
+				movq  vector2_p [rdi + Ball.pos], xmm0                       ; p1
+				movq  vector2_p [rsi + Ball.pos], xmm1                       ; p2
+
 				; https://wikipedia.org/wiki/Elastic_collision
 				;
-				; base:
-				; v1 = v1+(2m2/(m1+m2))*(((v2-v1).(p2-p1))/(|p2-p1|^2))*(p2-p1)
-				; v2 = v2+(2m1/(m1+m2))*(((v1-v2).(p1-p2))/(|p1-p2|^2))*(p1-p2)
-				;
-				; common term (can cache):
-				; m12 = m1+m2
-				; v1  = v1+(2m2/m12)*(((v2-v1).(p2-p1))/(|p2-p1|^2))*(p2-p1)
-				; v2  = v2+(2m1/m12)*(((v1-v2).(p1-p2))/(|p1-p2|^2))*(p1-p2)
-				;
-				; after simpliying the division:
-				; numer1 = 2m2*((v2-v1).(p2-p1))*(p2-p1)
-				; denom1 = m12*(|p2-p1|^2)
-				; numer2 = 2m1*((v1-v2).(p1-p2))*(p1-p2)
-				; denom2 = m12*(|p1-p2|^2)
-				; v1     = v1+numer1/denom1
-				; v2     = v2+numer2/denom2
-				;
-				; after expanding the dot products and magnitudes:
-				;
-				; dist2   = ((p2x-p1x)^2)+((p2y-p1y)^2)
-				; dot     = (v2x-v1x)*(p2x-p1x)+(v2y-v1y)*(p2y-p1y)
-				; numer1  = 2m2*dot*(p2-p1)
-				; denom1  = m12*dist2
-				; numer2  = 2m1*dot*(p1-p2)
-				; denom2  = m12*dist2
-				;
-				; after expanding the position difference and simplyfing denom1 and denom2
-				;
-				; p2_p1   = ((p2x-p1x);(p2y-p1y))
-				; dist2   = ((p2x-p1x)^2)+((p2y-p1y)^2)
-				; dot     = (v2x-v1x)*(p2x-p1x)+(v2y-v1y)*(p2y-p1y)
-				; numer1  = 2m2*dot*p2_p1
-				; numer2  = 2m1*dot*-p2_p1
-				; denom   = m12*dist2
-				; v1      = v1+numer1/denom
-				; v2      = v2+numer2/denom
-				;
-				; after separating everything into more variables
-				;
-				; px_diff = p2x-p1x
-				; py_diff = p2y-p1y
-				; vx_diff = v2x-v1x
-				; vy_diff = v2y-v1y
-				;
-				; p2_p1   = ((px_diff);(py_diff))
-				; dist2   = ((px_diff)^2)+((py_diff)^2)
-				; dot     = (vx_diff)*(px_diff)+(vy_diff)*(py_diff)
-				;
-				; numer1  = 2m2*dot*p2_p1
-				; numer2  = 2m1*dot*-p2_p1
-				; denom   = m12*dist2
-				;
-				; v1      = v1+numer1/denom
-				; v2      = v2+numer2/denom
+					; base:
+					; v1 = v1+(2m2/(m1+m2))*(((v2-v1).(p2-p1))/(|p2-p1|^2))*(p2-p1)
+					; v2 = v2+(2m1/(m1+m2))*(((v1-v2).(p1-p2))/(|p1-p2|^2))*(p1-p2)
+					;
+					; common term (can cache):
+					; m12 = m1+m2
+					; v1  = v1+(2m2/m12)*(((v2-v1).(p2-p1))/(|p2-p1|^2))*(p2-p1)
+					; v2  = v2+(2m1/m12)*(((v1-v2).(p1-p2))/(|p1-p2|^2))*(p1-p2)
+					;
+					; after simpliying the division:
+					; numer1 = 2m2*((v2-v1).(p2-p1))*(p2-p1)
+					; denom1 = m12*(|p2-p1|^2)
+					; numer2 = 2m1*((v1-v2).(p1-p2))*(p1-p2)
+					; denom2 = m12*(|p1-p2|^2)
+					; v1     = v1+numer1/denom1
+					; v2     = v2+numer2/denom2
+					;
+					; after expanding the dot products and magnitudes:
+					;
+					; dist2   = ((p2x-p1x)^2)+((p2y-p1y)^2)
+					; dot     = (v2x-v1x)*(p2x-p1x)+(v2y-v1y)*(p2y-p1y)
+					; numer1  = 2m2*dot*(p2-p1)
+					; denom1  = m12*dist2
+					; numer2  = 2m1*dot*(p1-p2)
+					; denom2  = m12*dist2
+					;
+					; after expanding the position difference and simplyfing denom1 and denom2
+					;
+					; p2_p1   = ((p2x-p1x);(p2y-p1y))
+					; dist2   = ((p2x-p1x)^2)+((p2y-p1y)^2)
+					; dot     = (v2x-v1x)*(p2x-p1x)+(v2y-v1y)*(p2y-p1y)
+					; numer1  = 2m2*dot*p2_p1
+					; numer2  = 2m1*dot*-p2_p1
+					; denom   = m12*dist2
+					; v1      = v1+numer1/denom
+					; v2      = v2+numer2/denom
+					;
+					; after separating everything into more variables))
+					;
 
-				; TODO: implement the elastic collisions
+				; The elastic collision algorithm
+
+					movd xmm0, float_p [rdi + Ball.mass]  ; m1
+					movq xmm1, vector2_p [rdi + Ball.pos] ; p1
+					movq xmm2, vector2_p [rdi + Ball.vel] ; v1
+
+					movd xmm3, float_p [rsi + Ball.mass]  ; m2
+					movq xmm4, vector2_p [rsi + Ball.pos] ; p2
+					movq xmm5, vector2_p [rsi + Ball.vel] ; v2
+
+					vaddss xmm6, xmm0, xmm3 ; m12
+					addss xmm0, xmm0 ; 2m1
+					addss xmm3, xmm3 ; 2m2
+
+					subps xmm4, xmm1 ; p2_p1
+
+					vsubps xmm1, xmm5, xmm2 ; v2_v1
+
+					mulps xmm1, xmm4 ; p2_p1 * v2_v1
+					vshufps xmm7, xmm1, xmm1, 85 ; (vy_diff)*(py_diff)
+					addss xmm7, xmm1 ; dot
+
+					mulss xmm0, xmm7
+					vshufps xmm0, xmm0, xmm0, 0 ; (2m1*dot;2m1*dot)
+
+					mulss xmm3, xmm7
+					vshufps xmm3, xmm3, xmm3, 0 ; (2m2*dot;2m2*dot)
+
+					mulps xmm3, xmm4 ; numer1
+
+					movd  xmm7, float_p [neg_flag32]
+					vshufps xmm7, xmm7, xmm7, 0
+					xorps xmm4, xmm7                 ; -p2_p1
+
+					mulps xmm0, xmm4 ; numer2
+
+					mulps xmm4, xmm4 ; p2_p1^2
+
+					vshufps xmm1, xmm4, xmm4, 85 ; py_diff^2
+
+					addss xmm4, xmm1 ; dist2
+					mulss xmm4, xmm6 ; denom
+
+					movd  xmm6, float_p [one_f] ; 1.0f
+					divss xmm6, xmm4            ; 1.0f/denom
+					vshufps xmm6, xmm6, xmm6, 0 ; (1.0f/denom;1.0f/denom)
+
+					mulps xmm3, xmm6 ; numer1/denom
+					mulps xmm0, xmm6 ; numer2/denom
+
+					addps xmm2, xmm3 ; v1+numer1/denom
+					addps xmm5, xmm0 ; v2+numer2/denom
+
+				movq vector2_p [rdi + Ball.vel], xmm2
+				movq vector2_p [rsi + Ball.vel], xmm5
 
 			.skip_elastic_collision:
 			add rsi, sizeof(Ball)
@@ -355,10 +424,10 @@ func(global, update_balls)
 	mov  sil, dil
 	call add_velocities
 
-	cmp  sil, false
-	je   .skip_collisions
+	; cmp  sil, false
+	; je   .skip_collisions
 	call handle_collisions
-	.skip_collisions:
+	; .skip_collisions:
 
 	sub  rsp, 8
 	fetch_screen_sizes
@@ -409,6 +478,11 @@ func(global, render_balls)
 				mov edi, [r13 + Ball.col]
 
 		call DrawTexturePro
+
+		; movq xmm0, [r13 + Ball.pos]
+		; movd xmm1, [r13 + Ball.radius]
+		; mov  edi,  COLOR_RED
+		; call DrawCircleLinesV
 
 		add r13, sizeof(Ball)
 		dec r12
