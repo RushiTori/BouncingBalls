@@ -5,5 +5,6 @@
 %include "std.inc"
 
 %include "rand.inc"
+%include "balls.inc"
 
 %endif ; MAIN_INC
