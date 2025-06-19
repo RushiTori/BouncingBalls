@@ -10,6 +10,7 @@ SCREEN_HEIGHT equ 1080 / SCREEN_RATIO
 section      .rodata
 
 string(static, title_str, "ASM Raylib - Bouncing Balls !", 0)
+var(static, float_t, main_dt, 0.016666)
 
 section      .text
 
@@ -17,8 +18,8 @@ func(static, update_game)
 	push rbp
 	mov  rbp, rsp
 
-	call GetFrameTime
-	xor  rdi, rdi
+	movd xmm0, float_p [main_dt]
+	xor  rdi,  rdi
 	call update_balls
 
 	pop rbp
@@ -54,6 +55,13 @@ func(global, _start)
 	call SetTargetFPS
 
 	call init_balls
+	cmp  al, false
+	jne  .skip_init_fail
+		call CloseWindow
+		mov  rax, SYSCALL_EXIT
+		mov  rdi, EXIT_FAILURE
+		syscall
+	.skip_init_fail:
 
 	.game_loop:
 		call WindowShouldClose
@@ -65,6 +73,8 @@ func(global, _start)
 
 		jmp .game_loop
 	.end_game_loop:
+
+	call free_balls
 
 	call CloseWindow
 
