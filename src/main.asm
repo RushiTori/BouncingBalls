@@ -46,6 +46,9 @@ func(static, render_game)
 	ret
 
 func(global, _start)
+	mov  rdi, FLAG_WINDOW_RESIZABLE
+	call SetConfigFlags
+
 	mov  rdi, SCREEN_WIDTH
 	mov  rsi, SCREEN_HEIGHT
 	lea  rdx, [title_str]
