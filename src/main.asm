@@ -53,6 +53,8 @@ func(static, change_bg_brightness)
 func(static, update_game)
 	sub rsp, 8
 
+	call change_bg_brightness
+
 	movd xmm0, float_p [main_dt]
 	mov  dil,  true
 	call update_balls
