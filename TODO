@@ -8,7 +8,7 @@ DONE | arrow keys change the brightness of the background
 
 DONE | let the user choose the number of balls at program start
 
-TO DO | option to make all the balls the same size
+DONE | option to make all the balls the same size
 
 TO DO | implement Ball color schemes
 	(default)      RGB random

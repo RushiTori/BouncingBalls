@@ -7,6 +7,7 @@ section      .rodata
 
 var(static, float_t, main_dt, 0.016666)
 string(static, no_balls_easter_egg, "What were you expecting :)", 0)
+var(static, float_t, eight_f, 8.0)
 
 section      .data
 
@@ -46,10 +47,38 @@ func(static, change_bg_brightness)
 	pop r12
 	ret
 
+func(static, change_ball_radius)
+	cmp uint64_p [computed_balls], 0
+	je  .skip_change
+
+	sub rsp, 8
+
+	mov  rdi, KEY_SPACE
+	call IsKeyPressed
+	cmp  al,  false
+	je   .end
+
+	mov  rcx,  uint64_p [computed_balls]
+	lea  rdi,  [balls]
+	movd xmm0, float_p [eight_f]
+
+	.loop_:
+		movd float_p [rdi + Ball.radius], xmm0
+		add  rdi,                         sizeof(Ball)
+		dec  rcx
+		jnz  .loop_
+	.end:
+
+	add rsp, 8
+
+	.skip_change:
+	ret
+
 func(static, update_game)
 	sub rsp, 8
 
 	call change_bg_brightness
+	call change_ball_radius
 
 	movd xmm0, float_p [main_dt]
 	mov  dil,  true
@@ -88,7 +117,6 @@ func(static, render_easter_egg)
 
 	add rsp, 8
 	ret
-
 
 func(static, render_game)
 	sub rsp, 8
