@@ -445,7 +445,7 @@ func(global, render_balls)
 	mov r12, BALLS_COUNT
 	lea r13, [balls]
 	
-	sub rsp, 28
+	sub rsp, 24
 	.render_loop:
 		; setting up call args
 			; texture
@@ -487,7 +487,7 @@ func(global, render_balls)
 		add r13, sizeof(Ball)
 		dec r12
 		jnz .render_loop
-	add rsp, 28
+	add rsp, 24
 
 	pop r13
 	pop r12
