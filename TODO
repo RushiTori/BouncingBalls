@@ -16,7 +16,8 @@ TO DO | optimize the elastic collision algorithm
 	(not done yet) implement spatial hash
 
 TO DO | make use of brk/sbrk/mmap to have access to more memory for the program
-	(not done yet) determine which of these to use
-	(not done yet) determine why not use malloc/free instead
+	(done)         determine which of these to use
+	(done)         determine why not use malloc/free instead
+	(not done yet) use mmap and see if it impacts FPS
 
 TO DO | let the user choose the number of balls at program start
