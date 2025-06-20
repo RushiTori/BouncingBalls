@@ -12,8 +12,8 @@ DONE | option to make all the balls the same size
 
 TO DO | implement Ball color schemes
 	(default)      RGB random
-	(not done yet) HUE random
-	(not done yet) brightness based on kinetic energy
+	(done)         HUE random
+	(done)         brightness based on kinetic energy
 
 TO DO | optimize the elastic collision algorithm
 	(not done yet) try to remove some memory read

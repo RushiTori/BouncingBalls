@@ -28,6 +28,10 @@ DEFAULT_COMPUTED_BALLS equ 256
 ; uint64_t computed_balls;
 extern computed_balls
 
+; In kinetic view, the balls' color are determined by their kinetic energy over th eaverage kinetic energy
+; bool use_kinetic_view;
+extern use_kinetic_view
+
 ; Static array of all the balls in the program
 ; Ball balls[BALLS_COUNT];
 extern balls

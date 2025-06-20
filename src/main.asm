@@ -74,11 +74,61 @@ func(static, change_ball_radius)
 	.skip_change:
 	ret
 
+; void change_ball_color(Color(*gen_color)(void));
+func(static, change_ball_color)
+	cmp uint64_p [computed_balls], 0
+	je  .skip_change
+
+	push r12
+	push r13
+	push r14
+
+	mov r12, rdi
+	lea r13, [balls]
+	mov r14, uint64_p [computed_balls]
+
+	.loop_:
+		call r12
+		mov  color_p [r13 + Ball.col], eax
+		add  r13,                      sizeof(Ball)
+		dec  r14
+		jnz  .loop_
+
+	pop r14
+	pop r13
+	pop r12
+
+	.skip_change:
+	ret
+
 func(static, update_game)
 	sub rsp, 8
 
 	call change_bg_brightness
 	call change_ball_radius
+
+	mov  rdi, KEY_R
+	call IsKeyPressed
+	cmp  al,  false
+	je   .skip_rgb_random
+		mov  rdi, rand_col
+		call change_ball_color
+	.skip_rgb_random:
+
+	mov  rdi, KEY_H
+	call IsKeyPressed
+	cmp  al,  false
+	je   .skip_hue_random
+		mov  rdi, rand_hsv
+		call change_ball_color
+	.skip_hue_random:
+
+	mov  rdi, KEY_K
+	call IsKeyPressed
+	cmp  al,  false
+	je   .skip_toggle_kinetic_view
+		xor bool_p [use_kinetic_view], true
+	.skip_toggle_kinetic_view:
 
 	movd xmm0, float_p [main_dt]
 	mov  dil,  true

@@ -8,6 +8,7 @@ section .rodata
 
 var(static, float_t, percent_50_f, 0.50)
 var(static, float_t, one_f, 1.0)
+var(static, float_t, uint8max_f, 255.0)
 
 var(static, uint64_t, neg_flag128, 0x8000_0000_8000_0000)
 var(static, uint32_t, neg_flag64, 0x80_00_00_00)
@@ -29,8 +30,13 @@ ball_texture_file_size equ $ - ball_texture_file
 section     .data
 
 var(global, uint64_t, computed_balls, DEFAULT_COMPUTED_BALLS)
+var(global, bool_t, use_kinetic_view, false)
 
 section     .bss
+
+res(static, float_t, kinetic_energy_min)
+res(static, float_t, kinetic_energy_max)
+res(static, float_t, kinetic_energy_max_norm)
 
 res(static, float_t, screen_width_f)
 res(static, float_t, screen_height_f)
@@ -178,29 +184,54 @@ func(global, free_balls)
 ; float get_total_kinetic_energy(void)
 func(global, get_total_kinetic_energy)
 	xorps xmm0, xmm0
-	mov   rcx,  uint64_p [computed_balls]
-	lea   rdi,  [balls]
+
+	cmp uint64_p [computed_balls], 0
+	je  .end
+
+	mov rcx, uint64_p [computed_balls]
+	lea rdi, [balls]
+
+
+	movq  xmm1, vector2_p [rdi + Ball.vel]
+	mulps xmm1, xmm1
+	vshufps xmm2, xmm1, xmm1, 85
+	addss xmm1, xmm2
+	mulss xmm1, float_p [rdi + Ball.mass]
+	movss xmm3, xmm1
+	movss xmm4, xmm1
 
 	; Kinetic energy of a ball: |Ball.vel|^2 * Ball.mass * 0.5
 	; Simplifying for the entire program we can just add the non-constant part together
 	; and then multiply the total by the contant part to save on computation
 	.compute_loop:
-		movd  xmm1, float_p [rdi + Ball.vel_x]
-		mulss xmm1, xmm1
-
-		movd  xmm2, float_p [rdi + Ball.vel_y]
-		mulss xmm2, xmm2
-
+		movq  xmm1, vector2_p [rdi + Ball.vel]
+		mulps xmm1, xmm1
+		vshufps xmm2, xmm1, xmm1, 85
 		addss xmm1, xmm2
 
 		mulss xmm1, float_p [rdi + Ball.mass]
+
+		minss xmm3, xmm1
+		maxss xmm4, xmm1
+
 		addss xmm0, xmm1
 
 		add rdi, sizeof(Ball)
 		dec rcx
 		jnz .compute_loop
 
+	movd float_p [kinetic_energy_min], xmm3
+	movd float_p [kinetic_energy_max], xmm4
+
+	subss xmm4, xmm3
+	movd  xmm3, float_p [one_f]
+	divss xmm3, xmm4
+
+	movd float_p [kinetic_energy_max_norm], xmm3
+
 	mulss xmm0, float_p[percent_50_f]
+
+	.end:
 	ret
 
 ; void handle_screen_edges(void);
@@ -456,12 +487,20 @@ func(global, render_balls)
 	je   .skip_render
 	push r12
 	push r13
+	push r14
 
 	mov r12, uint64_p [computed_balls]
 	lea r13, [balls]
+
+	mov  r14b, bool_p [use_kinetic_view]
+	cmp  r14b, false
+	je   .skip_get_kinetic_energy
+	call get_total_kinetic_energy
+	.skip_get_kinetic_energy:
 	
-	sub rsp, 24
+	sub rsp, 32
 	.render_loop:
+
 		; setting up call args
 			; texture
 				mov    eax,                      uint32_p [ball_texture_tex]
@@ -475,7 +514,7 @@ func(global, render_balls)
 				unpcklps xmm1, xmm0
 				xorps    xmm0, xmm0
 				cvtdq2ps xmm1, xmm1
-		
+
 			; dest
 				movd  xmm3, float_p [r13 + Ball.radius]
 				shufps xmm3, xmm3, 0
@@ -490,20 +529,36 @@ func(global, render_balls)
 				xorps xmm5, xmm5
 
 			; tint
+				cmp r14b, false
+				je  .skip_kinetic_energy
+					movq     xmm6, vector2_p [r13 + Ball.vel]
+					mulps    xmm6, xmm6
+					vshufps xmm7, xmm6, xmm6, 85
+					addss    xmm6, xmm7
+					mulss    xmm6, float_p [r13 + Ball.mass]
+					mulss    xmm6, float_p [percent_50_f]
+					subss    xmm6, float_p [kinetic_energy_min]
+					mulss    xmm6, float_p [kinetic_energy_max_norm]
+					shufps xmm6, xmm6, 0
+					mulss    xmm6, [uint8max_f]
+					cvtss2si rdi,  xmm6
+					mov      rax,  0x01010101
+					mul      edi
+					mov      edi,  eax
+					or       edi,  A_MASK
+					jmp      .call_draw
+				.skip_kinetic_energy:
 				mov edi, [r13 + Ball.col]
 
+			.call_draw:
 		call DrawTexturePro
-
-		; movq xmm0, [r13 + Ball.pos]
-		; movd xmm1, [r13 + Ball.radius]
-		; mov  edi,  COLOR_RED
-		; call DrawCircleLinesV
 
 		add r13, sizeof(Ball)
 		dec r12
 		jnz .render_loop
-	add rsp, 24
+	add rsp, 32
 
+	pop r14
 	pop r13
 	pop r12
 
