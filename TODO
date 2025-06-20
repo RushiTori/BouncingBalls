@@ -10,7 +10,7 @@ DONE | let the user choose the number of balls at program start
 
 DONE | option to make all the balls the same size
 
-TO DO | implement Ball color schemes
+DONE | implement Ball color schemes
 	(default)      RGB random
 	(done)         HUE random
 	(done)         brightness based on kinetic energy
