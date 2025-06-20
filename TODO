@@ -18,8 +18,3 @@ TO DO | implement Ball color schemes
 TO DO | optimize the elastic collision algorithm
 	(not done yet) try to remove some memory read
 	(not done yet) implement spatial hash
-
-TO DO | make use of brk/sbrk/mmap to have access to more memory for the program
-	(done)         determine which of these to use
-	(done)         determine why not use malloc/free instead
-	(not done yet) use mmap and see if it impacts FPS
