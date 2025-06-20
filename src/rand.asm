@@ -1,12 +1,14 @@
 bits    64
 default rel
 
-%include "ray_color.inc"
+%include "raylib.inc"
 %include "stdtypes.inc"
 
 section .rodata
 
 var(static, float_t, one_over_uint32_max, 796917760)
+var(static, float_t, _360_f, 360.0)
+var(static, float_t, one_f, 1.0)
 
 section .text
 
@@ -25,6 +27,21 @@ func(global, rand32)
 func(global, rand_col)
 	rand32_base
 	or eax, A_MASK
+	ret
+
+; Color rand_hsv(void);
+func(global, rand_hsv)
+	sub rsp, 8
+	
+	xorps xmm0, xmm0
+	movd  xmm1, float_p [_360_f]
+	call  randf
+
+	movd  xmm1, float_p [one_f]
+	movss xmm2, xmm1
+	call  ColorFromHSV
+
+	add rsp, 8
 	ret
 
 ; float randf(float min, float max);

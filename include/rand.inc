@@ -7,6 +7,9 @@ extern rand32
 ; Color rand_col(void);
 extern rand_col
 
+; Color rand_hsv(void);
+extern rand_hsv
+
 ; float randf(float min, float max);
 extern randf
 
