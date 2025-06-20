@@ -1,8 +1,10 @@
 DONE | draw balls with a texture
+
 DONE | elastic collisions
+
 DONE | make window resizable
 
-TO DO | arrow keys change the brightness of the background
+DONE | arrow keys change the brightness of the background
 
 TO DO | option to make all the balls the same size
 

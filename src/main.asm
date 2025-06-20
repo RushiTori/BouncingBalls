@@ -12,26 +12,66 @@ section      .rodata
 string(static, title_str, "ASM Raylib - Bouncing Balls !", 0)
 var(static, float_t, main_dt, 0.016666)
 
+section      .data
+
+var(static, uint8_t, bg_brightness, 0x7F)
+
 section      .text
 
+func(static, change_bg_brightness)
+	push r12
+
+	xor r12,  r12
+	mov r12b, uint8_p [bg_brightness]
+
+	; Try brightness UP
+		mov  edi,  KEY_UP
+		call IsKeyDown
+		cmp  al,   false
+		je   .skip_bright_up
+		cmp  r12b, 0xFF
+		je   .skip_bright_up
+		inc  r12b
+		.skip_bright_up:
+
+	; Try brightness DOWN
+		mov  edi,  KEY_DOWN
+		call IsKeyDown
+		cmp  al,   false
+		je   .skip_bright_down
+		cmp  r12b, 0x00
+		je   .skip_bright_down
+		dec  r12b
+		.skip_bright_down:
+
+	; Store the (maybe) new brightness
+	mov uint8_p [bg_brightness], r12b
+
+	pop r12
+	ret
+
 func(static, update_game)
-	push rbp
-	mov  rbp, rsp
+	sub rsp, 8
 
 	movd xmm0, float_p [main_dt]
 	mov  dil,  true
 	call update_balls
 
-	pop rbp
+	add rsp, 8
 	ret
 
 func(static, render_game)
-	push rbp
-	mov  rbp, rsp
+	sub rsp, 8
 
 	call BeginDrawing
 
-	mov  rdi, COLOR_RAYWHITE
+	; mov  rdi, COLOR_RAYWHITE
+	xor rdi, rdi
+	mov dil, uint8_p [bg_brightness]
+	mov eax, 0x01010101
+	mul edi
+	mov edi, eax
+
 	call ClearBackground
 
 	call render_balls
@@ -42,7 +82,7 @@ func(static, render_game)
 
 	call EndDrawing
 
-	pop rbp
+	add rsp, 8
 	ret
 
 func(global, _start)
