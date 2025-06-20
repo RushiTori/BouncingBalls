@@ -1,4 +1,4 @@
-# Makefile by RushiTori - June 18th 2025
+# Makefile by RushiTori - June 20th 2025
 # ====== Everything Makefile internal related ======
 
 rwildcard=$(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
@@ -60,7 +60,7 @@ ifeq ($(DEBUG), 1)
 	OBJ_FMT+=-gdwarf
 else
 	ifeq ($(RELEASE), 1)
-		OBJ_FMT+=-O3
+		OBJ_FMT+=-Ox
 	endif
 endif
 
@@ -90,8 +90,7 @@ release:
 $(OBJ_DIR)/%.$(OBJ_EXT): $(SRC_DIR)/%.$(SRC_EXT)
 	@echo Compiling $< into $@
 	@mkdir -p $(dir $@)
-	@$(CC) $(CCFLAGS) $< -o $@ -M -MF $(@:.obj=.dep) -MT $@
-	@$(CC) $(CCFLAGS) $< -o $@
+	@$(CC) $(CCFLAGS) $< -o $@ -MD $(@:.obj=.dep)
 
 install: release
 ifeq ($(shell uname), Linux)
