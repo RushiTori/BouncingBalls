@@ -19,7 +19,7 @@ func(static, update_game)
 	mov  rbp, rsp
 
 	movd xmm0, float_p [main_dt]
-	xor  rdi,  rdi
+	mov  dil,  true
 	call update_balls
 
 	pop rbp

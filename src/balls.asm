@@ -424,10 +424,10 @@ func(global, update_balls)
 	mov  sil, dil
 	call add_velocities
 
-	; cmp  sil, false
-	; je   .skip_collisions
+	cmp  sil, false
+	je   .skip_collisions
 	call handle_collisions
-	; .skip_collisions:
+	.skip_collisions:
 
 	sub  rsp, 8
 	fetch_screen_sizes
