@@ -87,8 +87,6 @@ func(static, render_game)
 	add rsp, 8
 	ret
 
-extern       puts
-
 ; void setup_program(uint64_t argc, char** argv);
 func(static, setup_program)
 	sub rsp, 8
