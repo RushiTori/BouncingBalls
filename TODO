@@ -1,0 +1,22 @@
+DONE | draw balls with a texture
+DONE | elastic collisions
+DONE | make window resizable
+
+TO DO | arrow keys change the brightness of the background
+
+TO DO | option to make all the balls the same size
+
+TO DO | implement Ball color schemes
+	(default)      RGB random
+	(not done yet) HUE random
+	(not done yet) brightness based on kinetic energy
+
+TO DO | optimize the elastic collision algorithm
+	(not done yet) try to remove some memory read
+	(not done yet) implement spatial hash
+
+TO DO | make use of brk/sbrk/mmap to have access to more memory for the program
+	(not done yet) determine which of these to use
+	(not done yet) determine why not use malloc/free instead
+
+TO DO | let the user choose the number of balls at program start
