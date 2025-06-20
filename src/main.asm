@@ -12,6 +12,7 @@ var(static, float_t, eight_f, 8.0)
 section      .data
 
 var(static, uint8_t, bg_brightness, 0x7F)
+var(static, bool_t, show_fps, true)
 
 section      .text
 
@@ -130,6 +131,13 @@ func(static, update_game)
 		xor bool_p [use_kinetic_view], true
 	.skip_toggle_kinetic_view:
 
+	mov  rdi, KEY_F
+	call IsKeyPressed
+	cmp  al,  false
+	je   .skip_toggle_fps_view
+		xor bool_p [show_fps], true
+	.skip_toggle_fps_view:
+
 	movd xmm0, float_p [main_dt]
 	mov  dil,  true
 	call update_balls
@@ -188,9 +196,12 @@ func(static, render_game)
 	call render_easter_egg
 	.skip_easter_egg:
 
-	xor  rdi, rdi
-	xor  rsi, rsi
-	call DrawFPS
+	cmp bool_p [show_fps], false
+	je  .skip_render_fps
+		xor  rdi, rdi
+		xor  rsi, rsi
+		call DrawFPS
+	.skip_render_fps:
 
 	call EndDrawing
 
