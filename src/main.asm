@@ -87,7 +87,15 @@ func(static, render_game)
 	add rsp, 8
 	ret
 
-func(global, _start)
+extern       puts
+
+; void setup_program(uint64_t argc, char** argv);
+func(static, setup_program)
+	sub rsp, 8
+
+	mov  rdi, LOG_WARNING
+	call SetTraceLogLevel
+
 	mov  rdi, FLAG_WINDOW_RESIZABLE
 	call SetConfigFlags
 
@@ -103,10 +111,16 @@ func(global, _start)
 	cmp  al, false
 	jne  .skip_init_fail
 		call CloseWindow
-		mov  rax, SYSCALL_EXIT
-		mov  rdi, EXIT_FAILURE
-		syscall
+		sys_exit(EXIT_SUCCESS)
 	.skip_init_fail:
+
+	add rsp, 8
+	ret
+
+func(global, _start)
+	mov  rdi, uint64_p [rsp]           ; argc
+	lea  rsi, [rsp + sizeof(uint64_s)] ; argv
+	call setup_program
 
 	.game_loop:
 		call WindowShouldClose
@@ -120,9 +134,5 @@ func(global, _start)
 	.end_game_loop:
 
 	call free_balls
-
 	call CloseWindow
-
-	mov rax, SYSCALL_EXIT
-	mov rdi, EXIT_SUCCESS
-	syscall
+	sys_exit(EXIT_SUCCESS)
