@@ -19,7 +19,14 @@ struc Ball
 endstruc
 
 ; Number of balls in the program
-BALLS_COUNT equ 256
+BALLS_COUNT            equ 8192
+
+; Default value of computed_balls
+DEFAULT_COMPUTED_BALLS equ 256
+
+; Number of balls actively used by the program (can't exceed BALLS_COUNT)
+; uint64_t computed_balls;
+extern computed_balls
 
 ; Static array of all the balls in the program
 ; Ball balls[BALLS_COUNT];

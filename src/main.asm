@@ -1,16 +1,12 @@
-bits    64
-default rel
+bits         64
+default      rel
 
 %include "main.inc"
 
-SCREEN_RATIO  equ 2
-SCREEN_WIDTH  equ 1920 / SCREEN_RATIO
-SCREEN_HEIGHT equ 1080 / SCREEN_RATIO
-
 section      .rodata
 
-string(static, title_str, "ASM Raylib - Bouncing Balls !", 0)
 var(static, float_t, main_dt, 0.016666)
+string(static, no_balls_easter_egg, "What were you expecting :)", 0)
 
 section      .data
 
@@ -62,12 +58,43 @@ func(static, update_game)
 	add rsp, 8
 	ret
 
+func(static, render_easter_egg)
+	sub rsp, 8
+
+	push r12
+	push r13
+
+	call GetScreenWidth
+	shr  rax, 1
+	mov  r12, rax
+	sub  r12, 342
+
+	call GetScreenHeight
+	shr  rax, 1
+	mov  r13, rax
+	sub  r13, 25
+
+	call rand_col
+
+	lea  rdi, [no_balls_easter_egg]
+	mov  rsi, r12
+	mov  rdx, r13
+	mov  rcx, 50
+	mov  r8,  rax
+	call DrawText
+	
+	pop r13
+	pop r12
+
+	add rsp, 8
+	ret
+
+
 func(static, render_game)
 	sub rsp, 8
 
 	call BeginDrawing
 
-	; mov  rdi, COLOR_RAYWHITE
 	xor rdi, rdi
 	mov dil, uint8_p [bg_brightness]
 	mov eax, 0x01010101
@@ -77,40 +104,17 @@ func(static, render_game)
 	call ClearBackground
 
 	call render_balls
-	
+
+	cmp  uint64_p [computed_balls], 0
+	jne  .skip_easter_egg
+	call render_easter_egg
+	.skip_easter_egg:
+
 	xor  rdi, rdi
 	xor  rsi, rsi
 	call DrawFPS
 
 	call EndDrawing
-
-	add rsp, 8
-	ret
-
-; void setup_program(uint64_t argc, char** argv);
-func(static, setup_program)
-	sub rsp, 8
-
-	mov  rdi, LOG_WARNING
-	call SetTraceLogLevel
-
-	mov  rdi, FLAG_WINDOW_RESIZABLE
-	call SetConfigFlags
-
-	mov  rdi, SCREEN_WIDTH
-	mov  rsi, SCREEN_HEIGHT
-	lea  rdx, [title_str]
-	call InitWindow
-
-	mov  rdi, 60
-	call SetTargetFPS
-
-	call init_balls
-	cmp  al, false
-	jne  .skip_init_fail
-		call CloseWindow
-		sys_exit(EXIT_SUCCESS)
-	.skip_init_fail:
 
 	add rsp, 8
 	ret

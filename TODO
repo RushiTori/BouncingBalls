@@ -6,6 +6,8 @@ DONE | make window resizable
 
 DONE | arrow keys change the brightness of the background
 
+DONE | let the user choose the number of balls at program start
+
 TO DO | option to make all the balls the same size
 
 TO DO | implement Ball color schemes
@@ -21,5 +23,3 @@ TO DO | make use of brk/sbrk/mmap to have access to more memory for the program
 	(done)         determine which of these to use
 	(done)         determine why not use malloc/free instead
 	(not done yet) use mmap and see if it impacts FPS
-
-TO DO | let the user choose the number of balls at program start

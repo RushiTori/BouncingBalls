@@ -26,6 +26,10 @@ static  ball_texture_png: data
 	incbin "res/ball_texture.png"
 ball_texture_file_size equ $ - ball_texture_file
 
+section     .data
+
+var(global, uint64_t, computed_balls, DEFAULT_COMPUTED_BALLS)
+
 section     .bss
 
 res(static, float_t, screen_width_f)
@@ -101,7 +105,7 @@ func(global, init_balls)
 	
 	fetch_screen_sizes
 
-	mov rcx, BALLS_COUNT
+	mov rcx, uint64_p [computed_balls]
 	lea rdi, [balls]
 
 	movd xmm3, float_p [min_ball_radius]
@@ -113,6 +117,8 @@ func(global, init_balls)
 	movd xmm7, float_p [screen_width_f]
 	movd xmm8, float_p [screen_height_f]
 
+	cmp uint64_p [computed_balls], 0
+	je  .skip_init
 	; Initializing the balls
 	.init_loop:
 		movss xmm0,                        xmm3
@@ -148,6 +154,7 @@ func(global, init_balls)
 		dec rcx
 		jnz .init_loop
 
+	.skip_init:
 	mov al, true
 	.end:
 	pop rbp
@@ -171,7 +178,7 @@ func(global, free_balls)
 ; float get_total_kinetic_energy(void)
 func(global, get_total_kinetic_energy)
 	xorps xmm0, xmm0
-	mov   rcx,  BALLS_COUNT
+	mov   rcx,  uint64_p [computed_balls]
 	lea   rdi,  [balls]
 
 	; Kinetic energy of a ball: |Ball.vel|^2 * Ball.mass * 0.5
@@ -202,7 +209,7 @@ func(static, handle_screen_edges)
 	movd xmm2, float_p [screen_width_f]
 	movd xmm3, float_p [screen_height_f]
 
-	mov rcx, BALLS_COUNT
+	mov rcx, uint64_p [computed_balls]
 	lea rdi, [balls]
 	.loop_:
 		; Handling left/right
@@ -245,7 +252,7 @@ func(static, handle_screen_edges)
 ; void add_velocities(float dt);
 func(static, add_velocities)
 	shufps  xmm0, xmm0, 0
-	mov rcx, BALLS_COUNT
+	mov rcx, uint64_p [computed_balls]
 	lea rdi, [balls]
 	.loop_:
 		movq  xmm1,                       vector2_p [rdi + Ball.vel]
@@ -262,7 +269,7 @@ func(static, add_velocities)
 ; Handles elastic collisions between the balls
 ; void handle_collisions(void);
 func(static, handle_collisions)
-	mov rcx, BALLS_COUNT
+	mov rcx, uint64_p [computed_balls]
 	lea rdi, [balls]
 	.loop_:
 		mov rax, rcx
@@ -421,6 +428,11 @@ func(static, handle_collisions)
 ; Updates all the balls according to a Delta Time, and whether or not to compute inter-collisions
 ; void update_balls(float dt, bool doBallsCollide);
 func(global, update_balls)
+	cmp uint64_p [computed_balls], 0
+	je  .skip_update
+
+	sub rsp, 8
+
 	mov  sil, dil
 	call add_velocities
 
@@ -429,20 +441,23 @@ func(global, update_balls)
 	call handle_collisions
 	.skip_collisions:
 
-	sub  rsp, 8
 	fetch_screen_sizes
 	call handle_screen_edges
-	add  rsp, 8
 
+	add rsp, 8
+
+	.skip_update:
 	ret
 
 ; Renders all the balls at once
 ; void render_balls(void);
 func(global, render_balls)
+	cmp  uint64_p [computed_balls], 0
+	je   .skip_render
 	push r12
 	push r13
 
-	mov r12, BALLS_COUNT
+	mov r12, uint64_p [computed_balls]
 	lea r13, [balls]
 	
 	sub rsp, 24
@@ -492,4 +507,5 @@ func(global, render_balls)
 	pop r13
 	pop r12
 
+	.skip_render:
 	ret

@@ -6,5 +6,6 @@
 
 %include "rand.inc"
 %include "balls.inc"
+%include "setup.inc"
 
 %endif ; MAIN_INC
