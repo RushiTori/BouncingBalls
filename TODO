@@ -16,5 +16,5 @@ DONE | implement Ball color schemes
 	(done)         brightness based on kinetic energy
 
 TO DO | optimize the elastic collision algorithm
-	(not done yet) try to remove some memory read
+	(done) try to remove some memory read
 	(not done yet) implement spatial hash
